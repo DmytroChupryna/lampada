@@ -456,11 +456,13 @@
 
     // --------------- Search ---------------
 
-    AshdiBalancer.prototype.search = function (_object, kpId) {
+    AshdiBalancer.prototype.search = function (_object, ids) {
         var self = this;
         this.object = _object;
         this.select_title = _object.search || (_object.movie && (_object.movie.title || _object.movie.name)) || '';
 
+        // Ashdi only supports KP ID
+        var kpId = ids.kp || '';
         if (!kpId) {
             this.component.emptyForQuery(this.select_title);
             return;
@@ -834,36 +836,62 @@
 
     // --------------- Search ---------------
 
-    CollapsBalancer.prototype.search = function (_object, kpId) {
-        var self = this;
+    CollapsBalancer.prototype.search = function (_object, ids) {
         this.object = _object;
         this.select_title = _object.search || (_object.movie && (_object.movie.title || _object.movie.name)) || '';
 
-        if (!kpId) {
+        // Build list of URLs to try: KP ID first, then IMDB ID
+        var urls = [];
+        if (ids.kp) urls.push(getHost() + '/embed/kp/' + ids.kp);
+        if (ids.imdb) urls.push(getHost() + '/embed/imdb/' + ids.imdb);
+
+        if (urls.length === 0) {
             this.component.emptyForQuery(this.select_title);
             return;
         }
 
         this.component.loading(true);
+        this._tryUrls(urls, 0);
+    };
 
-        var url = getHost() + '/embed/kp/' + kpId;
+    /**
+     * Try URLs one by one until we find content
+     */
+    CollapsBalancer.prototype._tryUrls = function (urls, index) {
+        var self = this;
+
+        if (index >= urls.length) {
+            this.component.loading(false);
+            this.component.emptyForQuery(this.select_title);
+            return;
+        }
 
         this.network.clear();
         this.network.timeout(15000);
         this.network.silent(
-            url,
+            urls[index],
             function (response) {
-                self.component.loading(false);
                 var str = typeof response === 'string' ? response : '';
-                if (!str) {
+                // Check if response has actual content (not just empty HTML shell)
+                if (str && str.indexOf('makePlayer') !== -1) {
+                    self.component.loading(false);
+                    self._processHTML(str);
+                } else if (index + 1 < urls.length) {
+                    // Try next URL
+                    self._tryUrls(urls, index + 1);
+                } else {
+                    self.component.loading(false);
                     self.component.emptyForQuery(self.select_title);
-                    return;
                 }
-                self._processHTML(str);
             },
             function () {
-                self.component.loading(false);
-                self.component.emptyForQuery(self.select_title);
+                // Network error — try next URL
+                if (index + 1 < urls.length) {
+                    self._tryUrls(urls, index + 1);
+                } else {
+                    self.component.loading(false);
+                    self.component.emptyForQuery(self.select_title);
+                }
             },
             false,
             { dataType: 'text' }
@@ -1192,7 +1220,7 @@
     CollapsBalancer.title      = 'Collaps';
     CollapsBalancer.balanser   = 'collaps';
     CollapsBalancer.kp         = true;
-    CollapsBalancer.imdb       = false;
+    CollapsBalancer.imdb       = true;
     CollapsBalancer.searchable = false;
     CollapsBalancer.disabled   = false;
 
@@ -1236,8 +1264,6 @@
         var all_sources = [];
         var sources     = {};
         var filter_sources = [];
-        var kp_sources  = [];
-        var imdb_sources = [];
 
         var default_balanser = Lampa.Storage.get('lampada_balanser', 'collaps');
         var balanser = default_balanser;
@@ -1259,8 +1285,8 @@
         var obj_filter_sources = all_sources.filter(function (s) { return !s.disabled; });
         filter_sources = obj_filter_sources.map(function (s) { return s.name; });
         obj_filter_sources.forEach(function (s) { sources[s.name] = s.source; });
-        kp_sources   = obj_filter_sources.filter(function (s) { return s.kp; }).map(function (s) { return s.name; });
-        imdb_sources = obj_filter_sources.filter(function (s) { return s.imdb; }).map(function (s) { return s.name; });
+        obj_filter_sources.filter(function (s) { return s.kp; }).map(function (s) { return s.name; });
+        obj_filter_sources.filter(function (s) { return s.imdb; }).map(function (s) { return s.name; });
         obj_filter_sources.filter(function (s) { return s.search; }).map(function (s) { return s.name; });
 
         // Validate chosen balancer
@@ -1356,9 +1382,9 @@
          * Save filter choice for current movie + balancer
          */
         this.saveChoice = function (choice) {
-            var kpId = kpIdFromObject();
-            if (kpId) {
-                Lampa.Storage.set('lampada_ch_' + balanser + '_' + kpId, choice);
+            var key = contentKey();
+            if (key) {
+                Lampa.Storage.set('lampada_ch_' + balanser + '_' + key, choice);
             }
         };
 
@@ -1418,11 +1444,30 @@
         // ===== Search logic =====
 
         function kpIdFromObject() {
-            return (object.movie && (object.movie.id || object.movie.kinopoisk_id)) || '';
+            var m = object.movie;
+            if (!m) return '';
+            // kinopoisk_id is explicit KP ID; only use .id if it's clearly a KP source
+            return m.kinopoisk_id || m.kp_id || '';
         }
 
         function imdbIdFromObject() {
-            return (object.movie && object.movie.imdb_id) || '';
+            var m = object.movie;
+            if (!m) return '';
+            return m.imdb_id || '';
+        }
+
+        function tmdbIdFromObject() {
+            var m = object.movie;
+            if (!m) return '';
+            // In the full Lampa app, .id is typically the TMDB ID
+            return m.id || '';
+        }
+
+        /**
+         * Get a unique content key for saving choices/state
+         */
+        function contentKey() {
+            return kpIdFromObject() || imdbIdFromObject() || tmdbIdFromObject() || '';
         }
 
         function startSearch() {
@@ -1436,19 +1481,18 @@
             }
 
             // Restore saved choice
-            var kpId = kpIdFromObject();
-            var saved = kpId ? Lampa.Storage.get('lampada_ch_' + balanser + '_' + kpId, {}) : {};
+            var key = contentKey();
+            var saved = key ? Lampa.Storage.get('lampada_ch_' + balanser + '_' + key, {}) : {};
             active.extendChoice(saved);
 
-            // Determine which ID to use
-            var id = '';
-            if (kp_sources.indexOf(balanser) !== -1 && kpId) {
-                id = kpId;
-            } else if (imdb_sources.indexOf(balanser) !== -1 && imdbIdFromObject()) {
-                id = imdbIdFromObject();
-            }
+            // Pass all available IDs to the balancer — it decides which to use
+            var ids = {
+                kp:   kpIdFromObject(),
+                imdb: imdbIdFromObject(),
+                tmdb: tmdbIdFromObject()
+            };
 
-            active.search(object, id);
+            active.search(object, ids);
         }
 
         // ===== Navigation =====

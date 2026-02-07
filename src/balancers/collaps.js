@@ -92,36 +92,63 @@ CollapsBalancer.prototype.constructor = CollapsBalancer;
 
 // --------------- Search ---------------
 
-CollapsBalancer.prototype.search = function (_object, kpId) {
+CollapsBalancer.prototype.search = function (_object, ids) {
     var self = this;
     this.object = _object;
     this.select_title = _object.search || (_object.movie && (_object.movie.title || _object.movie.name)) || '';
 
-    if (!kpId) {
+    // Build list of URLs to try: KP ID first, then IMDB ID
+    var urls = [];
+    if (ids.kp) urls.push(getHost() + '/embed/kp/' + ids.kp);
+    if (ids.imdb) urls.push(getHost() + '/embed/imdb/' + ids.imdb);
+
+    if (urls.length === 0) {
         this.component.emptyForQuery(this.select_title);
         return;
     }
 
     this.component.loading(true);
+    this._tryUrls(urls, 0);
+};
 
-    var url = getHost() + '/embed/kp/' + kpId;
+/**
+ * Try URLs one by one until we find content
+ */
+CollapsBalancer.prototype._tryUrls = function (urls, index) {
+    var self = this;
+
+    if (index >= urls.length) {
+        this.component.loading(false);
+        this.component.emptyForQuery(this.select_title);
+        return;
+    }
 
     this.network.clear();
     this.network.timeout(15000);
     this.network.silent(
-        url,
+        urls[index],
         function (response) {
-            self.component.loading(false);
             var str = typeof response === 'string' ? response : '';
-            if (!str) {
+            // Check if response has actual content (not just empty HTML shell)
+            if (str && str.indexOf('makePlayer') !== -1) {
+                self.component.loading(false);
+                self._processHTML(str);
+            } else if (index + 1 < urls.length) {
+                // Try next URL
+                self._tryUrls(urls, index + 1);
+            } else {
+                self.component.loading(false);
                 self.component.emptyForQuery(self.select_title);
-                return;
             }
-            self._processHTML(str);
         },
         function () {
-            self.component.loading(false);
-            self.component.emptyForQuery(self.select_title);
+            // Network error — try next URL
+            if (index + 1 < urls.length) {
+                self._tryUrls(urls, index + 1);
+            } else {
+                self.component.loading(false);
+                self.component.emptyForQuery(self.select_title);
+            }
         },
         false,
         { dataType: 'text' }
@@ -450,6 +477,6 @@ CollapsBalancer.prototype._kpId = function () {
 CollapsBalancer.title      = 'Collaps';
 CollapsBalancer.balanser   = 'collaps';
 CollapsBalancer.kp         = true;
-CollapsBalancer.imdb       = false;
+CollapsBalancer.imdb       = true;
 CollapsBalancer.searchable = false;
 CollapsBalancer.disabled   = false;

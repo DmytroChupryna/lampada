@@ -31,11 +31,13 @@ AshdiBalancer.prototype.constructor = AshdiBalancer;
 
 // --------------- Search ---------------
 
-AshdiBalancer.prototype.search = function (_object, kpId) {
+AshdiBalancer.prototype.search = function (_object, ids) {
     var self = this;
     this.object = _object;
     this.select_title = _object.search || (_object.movie && (_object.movie.title || _object.movie.name)) || '';
 
+    // Ashdi only supports KP ID
+    var kpId = ids.kp || '';
     if (!kpId) {
         this.component.emptyForQuery(this.select_title);
         return;

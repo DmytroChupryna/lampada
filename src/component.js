@@ -165,9 +165,9 @@ export function component(object) {
      * Save filter choice for current movie + balancer
      */
     this.saveChoice = function (choice) {
-        var kpId = kpIdFromObject();
-        if (kpId) {
-            Lampa.Storage.set('lampada_ch_' + balanser + '_' + kpId, choice);
+        var key = contentKey();
+        if (key) {
+            Lampa.Storage.set('lampada_ch_' + balanser + '_' + key, choice);
         }
     };
 
@@ -227,11 +227,30 @@ export function component(object) {
     // ===== Search logic =====
 
     function kpIdFromObject() {
-        return (object.movie && (object.movie.id || object.movie.kinopoisk_id)) || '';
+        var m = object.movie;
+        if (!m) return '';
+        // kinopoisk_id is explicit KP ID; only use .id if it's clearly a KP source
+        return m.kinopoisk_id || m.kp_id || '';
     }
 
     function imdbIdFromObject() {
-        return (object.movie && object.movie.imdb_id) || '';
+        var m = object.movie;
+        if (!m) return '';
+        return m.imdb_id || '';
+    }
+
+    function tmdbIdFromObject() {
+        var m = object.movie;
+        if (!m) return '';
+        // In the full Lampa app, .id is typically the TMDB ID
+        return m.id || '';
+    }
+
+    /**
+     * Get a unique content key for saving choices/state
+     */
+    function contentKey() {
+        return kpIdFromObject() || imdbIdFromObject() || tmdbIdFromObject() || '';
     }
 
     function startSearch() {
@@ -245,19 +264,18 @@ export function component(object) {
         }
 
         // Restore saved choice
-        var kpId = kpIdFromObject();
-        var saved = kpId ? Lampa.Storage.get('lampada_ch_' + balanser + '_' + kpId, {}) : {};
+        var key = contentKey();
+        var saved = key ? Lampa.Storage.get('lampada_ch_' + balanser + '_' + key, {}) : {};
         active.extendChoice(saved);
 
-        // Determine which ID to use
-        var id = '';
-        if (kp_sources.indexOf(balanser) !== -1 && kpId) {
-            id = kpId;
-        } else if (imdb_sources.indexOf(balanser) !== -1 && imdbIdFromObject()) {
-            id = imdbIdFromObject();
-        }
+        // Pass all available IDs to the balancer — it decides which to use
+        var ids = {
+            kp:   kpIdFromObject(),
+            imdb: imdbIdFromObject(),
+            tmdb: tmdbIdFromObject()
+        };
 
-        active.search(object, id);
+        active.search(object, ids);
     }
 
     // ===== Navigation =====
