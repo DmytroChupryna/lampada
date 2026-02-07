@@ -1766,6 +1766,21 @@
      * Currently supports: Ashdi (UKR)
      */
 
+    function checkBlockedOrigin() {
+        try {
+            var host = window.location.hostname || '';
+            // CDN interkh.com blocks Origin: https://lampa.mx with 423 Locked
+            if (host === 'lampa.mx' || host === 'www.lampa.mx') {
+                console.warn('[Lampada] lampa.mx is blocked by stream CDN!');
+                setTimeout(function () {
+                    try {
+                        Lampa.Noty.show('Lampada: lampa.mx заблоковано CDN. Використовуйте app.lampa.stream або cub.red', { time: 15000 });
+                    } catch (e) {}
+                }, 3000);
+            }
+        } catch (e) {}
+    }
+
     function startPlugin() {
         initLang();
         initCSS();
@@ -1773,6 +1788,7 @@
         initManifest();
         initSettings();
         addMenuButton();
+        checkBlockedOrigin();
 
         console.log('Lampada plugin v' + MOD_VERSION + ' loaded');
     }
