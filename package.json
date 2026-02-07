@@ -1,0 +1,15 @@
+{
+  "name": "lampada",
+  "version": "1.0.0",
+  "description": "Lampa media center plugin — modular BWA architecture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c --watch",
+    "dev": "rollup -c --watch"
+  },
+  "devDependencies": {
+    "rollup": "^4"
+  }
+}
