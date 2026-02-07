@@ -12,7 +12,7 @@ var CORS_PROXIES = [
  * Check if CORS proxy is enabled in settings
  */
 export function proxyEnabled() {
-    return Lampa.Storage.field('lampada_use_proxy') !== false;
+    return Lampa.Storage.field('lampada_use_proxy') === true;
 }
 
 /**

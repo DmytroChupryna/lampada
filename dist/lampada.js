@@ -136,7 +136,7 @@
             param: {
                 name: 'lampada_use_proxy',
                 type: 'trigger',
-                default: true
+                default: false
             },
             field: {
                 name: t('lampada_settings_proxy'),
@@ -171,11 +171,11 @@
                 name: 'ashdi_host',
                 type: 'input',
                 values: '',
-                default: 'https://base.ashdi.vip'
+                default: 'https://ashdi.vip'
             },
             field: {
                 name: t('ashdi_settings_host'),
-                description: 'https://base.ashdi.vip'
+                description: 'https://ashdi.vip'
             },
             onChange: function (val) {
                 Lampa.Storage.set('ashdi_host', val);
@@ -381,7 +381,7 @@
      * Check if CORS proxy is enabled in settings
      */
     function proxyEnabled() {
-        return Lampa.Storage.field('lampada_use_proxy') !== false;
+        return Lampa.Storage.field('lampada_use_proxy') === true;
     }
 
     /**
@@ -408,7 +408,7 @@
      * Uses PlayerJS embed format with HLS streams
      */
 
-    var DEFAULT_HOST = 'https://base.ashdi.vip';
+    var DEFAULT_HOST = 'https://ashdi.vip';
 
     function getHost() {
         var h = Lampa.Storage.get('ashdi_host', '');

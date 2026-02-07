@@ -7,7 +7,7 @@ import { extractPlayerjs, parseFileParam, parseEpisodeFile } from '../utils/play
 import { applyProxy } from '../utils/proxy.js';
 import { t } from '../lang.js';
 
-var DEFAULT_HOST = 'https://base.ashdi.vip';
+var DEFAULT_HOST = 'https://ashdi.vip';
 
 function getHost() {
     var h = Lampa.Storage.get('ashdi_host', '');

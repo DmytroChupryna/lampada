@@ -12,7 +12,7 @@ export function initSettings() {
         param: {
             name: 'lampada_use_proxy',
             type: 'trigger',
-            default: true
+            default: false
         },
         field: {
             name: t('lampada_settings_proxy'),
@@ -47,11 +47,11 @@ export function initSettings() {
             name: 'ashdi_host',
             type: 'input',
             values: '',
-            default: 'https://base.ashdi.vip'
+            default: 'https://ashdi.vip'
         },
         field: {
             name: t('ashdi_settings_host'),
-            description: 'https://base.ashdi.vip'
+            description: 'https://ashdi.vip'
         },
         onChange: function (val) {
             Lampa.Storage.set('ashdi_host', val);
