@@ -26,12 +26,18 @@ export function initLang() {
         // Ashdi
         ashdi_title_full:         { uk: 'Ashdi (UKR)',                            en: 'Ashdi (UKR)',              ru: 'Ashdi (UKR)' },
 
+        // Collaps
+        collaps_title_full:       { uk: 'Collaps',                               en: 'Collaps',                  ru: 'Collaps' },
+
         // Settings
         lampada_settings_header:  { uk: 'Налаштування Lampada',                   en: 'Lampada Settings',         ru: 'Настройки Lampada' },
         lampada_settings_proxy:   { uk: 'Використовувати CORS-проксі',            en: 'Use CORS proxy',           ru: 'Использовать CORS-прокси' },
         lampada_settings_proxy_url: { uk: 'URL CORS-проксі (пусто = авто)',       en: 'CORS proxy URL (empty = auto)', ru: 'URL CORS-прокси (пусто = авто)' },
 
         // Ashdi settings
-        ashdi_settings_host:      { uk: 'Хост Ashdi',                             en: 'Ashdi Host',               ru: 'Хост Ashdi' }
+        ashdi_settings_host:      { uk: 'Хост Ashdi',                             en: 'Ashdi Host',               ru: 'Хост Ashdi' },
+
+        // Collaps settings
+        collaps_settings_host:    { uk: 'Хост Collaps',                           en: 'Collaps Host',             ru: 'Хост Collaps' }
     });
 }

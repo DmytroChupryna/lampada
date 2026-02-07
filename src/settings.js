@@ -57,4 +57,22 @@ export function initSettings() {
             Lampa.Storage.set('ashdi_host', val);
         }
     });
+
+    // --- Collaps settings ---
+    Lampa.SettingsApi.addParam({
+        component: 'lampada',
+        param: {
+            name: 'collaps_host',
+            type: 'input',
+            values: '',
+            default: 'https://api.delivembd.ws'
+        },
+        field: {
+            name: t('collaps_settings_host'),
+            description: 'https://api.delivembd.ws'
+        },
+        onChange: function (val) {
+            Lampa.Storage.set('collaps_host', val);
+        }
+    });
 }

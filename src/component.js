@@ -7,12 +7,14 @@
  * Mirrors the online_mod/BWA pattern.
  */
 import { AshdiBalancer } from './balancers/ashdi.js';
+import { CollapsBalancer } from './balancers/collaps.js';
 import { t } from './lang.js';
 
 // All available balancer constructors
 var BALANCER_LIST = [
+    CollapsBalancer,
     AshdiBalancer
-    // Future: RezkaBalancer, CollapsBalancer, KodikBalancer, ...
+    // Future: RezkaBalancer, KodikBalancer, ...
 ];
 
 export var MOD_VERSION  = '1.0.0';
@@ -45,7 +47,7 @@ export function component(object) {
     var imdb_sources = [];
     var search_sources = [];
 
-    var default_balanser = Lampa.Storage.get('lampada_balanser', 'ashdi');
+    var default_balanser = Lampa.Storage.get('lampada_balanser', 'collaps');
     var balanser = default_balanser;
 
     // Register balancers
