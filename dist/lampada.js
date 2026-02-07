@@ -1200,23 +1200,25 @@
         var isWebos = false;
         try { isWebos = Lampa.Platform.is('webos'); } catch (e) {}
 
-        dbg('PLAY: android=' + isAndroid + ' tizen=' + isTizen + ' webos=' + isWebos);
-        dbg('URL: ' + url.substring(0, 120));
+        // Show origin and platform info
+        var origin = 'unknown';
+        try { origin = window.location.origin || window.location.href; } catch (e) {}
+        dbg('origin=' + origin + ' android=' + isAndroid);
 
-        // Pre-flight: test if TV can reach the m3u8 manifest (debug only)
+        // Pre-flight: test if TV can reach the m3u8 manifest
         try {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', url, true);
             xhr.timeout = 8000;
             xhr.onload = function () {
-                var body = (xhr.responseText || '').substring(0, 60);
-                dbg('XHR: s=' + xhr.status + ' len=' + (xhr.responseText || '').length + ' body=' + body);
+                var body = (xhr.responseText || '').substring(0, 50);
+                dbg('XHR s=' + xhr.status + ' len=' + (xhr.responseText || '').length + ' ' + body);
             };
             xhr.onerror = function () {
-                dbg('XHR: NETWORK ERROR');
+                dbg('XHR NETWORK ERROR (origin blocked?)');
             };
             xhr.ontimeout = function () {
-                dbg('XHR: TIMEOUT');
+                dbg('XHR TIMEOUT');
             };
             xhr.send();
         } catch (e) {
