@@ -437,6 +437,7 @@ CollapsBalancer.prototype._appendItem = function (element) {
 // --------------- Play ---------------
 
 CollapsBalancer.prototype._playVideo = function (element, item, viewed) {
+    var self   = this;
     var object = this.object;
 
     if (object.movie && object.movie.id) {
@@ -449,23 +450,55 @@ CollapsBalancer.prototype._playVideo = function (element, item, viewed) {
         return;
     }
 
-    dbg('PLAY URL: ' + element.url.substring(0, 100));
+    var url = element.url;
 
-    // Headers: only set on Android without proxy (same as online_mod)
+    // Debug: log full URL and test fetch
+    dbg('PLAY full URL: ' + url);
+
+    // Pre-flight: test if TV can reach the m3u8 manifest
+    try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.timeout = 8000;
+        xhr.onload = function () {
+            dbg('XHR test: status=' + xhr.status + ' type=' + (xhr.getResponseHeader('Content-Type') || '?') + ' len=' + (xhr.responseText || '').length);
+            var txt = (xhr.responseText || '').substring(0, 80);
+            dbg('XHR body: ' + txt);
+        };
+        xhr.onerror = function () {
+            dbg('XHR test: NETWORK ERROR (CORS or DNS or TLS?)');
+        };
+        xhr.ontimeout = function () {
+            dbg('XHR test: TIMEOUT');
+        };
+        xhr.send();
+    } catch (e) {
+        dbg('XHR test exception: ' + e.message);
+    }
+
+    // Detect platform
     var isAndroid = false;
     try { isAndroid = Lampa.Platform.is('android'); } catch (e) {}
 
+    var isTizen = false;
+    try { isTizen = Lampa.Platform.is('tizen'); } catch (e) {}
+
+    var isWebos = false;
+    try { isWebos = Lampa.Platform.is('webos'); } catch (e) {}
+
+    dbg('Platform: android=' + isAndroid + ' tizen=' + isTizen + ' webos=' + isWebos);
+
+    // Headers: only set on Android (same as online_mod)
     var playerHeaders = {};
     if (isAndroid) {
         playerHeaders = {
             'Origin': getHost(),
             'Referer': getHost() + '/'
         };
-        dbg('Android: adding Origin/Referer headers');
     }
 
     var first = {
-        url:       element.url,
+        url:       url,
         quality:   element.qualities || {},
         timeline:  element.timeline,
         title:     element.season
