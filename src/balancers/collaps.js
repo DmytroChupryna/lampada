@@ -452,30 +452,6 @@ CollapsBalancer.prototype._playVideo = function (element, item, viewed) {
 
     var url = element.url;
 
-    // Debug: log full URL and test fetch
-    dbg('PLAY full URL: ' + url);
-
-    // Pre-flight: test if TV can reach the m3u8 manifest
-    try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, true);
-        xhr.timeout = 8000;
-        xhr.onload = function () {
-            dbg('XHR test: status=' + xhr.status + ' type=' + (xhr.getResponseHeader('Content-Type') || '?') + ' len=' + (xhr.responseText || '').length);
-            var txt = (xhr.responseText || '').substring(0, 80);
-            dbg('XHR body: ' + txt);
-        };
-        xhr.onerror = function () {
-            dbg('XHR test: NETWORK ERROR (CORS or DNS or TLS?)');
-        };
-        xhr.ontimeout = function () {
-            dbg('XHR test: TIMEOUT');
-        };
-        xhr.send();
-    } catch (e) {
-        dbg('XHR test exception: ' + e.message);
-    }
-
     // Detect platform
     var isAndroid = false;
     try { isAndroid = Lampa.Platform.is('android'); } catch (e) {}
@@ -486,12 +462,34 @@ CollapsBalancer.prototype._playVideo = function (element, item, viewed) {
     var isWebos = false;
     try { isWebos = Lampa.Platform.is('webos'); } catch (e) {}
 
-    dbg('Platform: android=' + isAndroid + ' tizen=' + isTizen + ' webos=' + isWebos);
+    dbg('PLAY: android=' + isAndroid + ' tizen=' + isTizen + ' webos=' + isWebos);
+    dbg('URL: ' + url.substring(0, 120));
 
-    // Headers: only set on Android (same as online_mod)
+    // Pre-flight: test if TV can reach the m3u8 manifest (debug only)
+    try {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.timeout = 8000;
+        xhr.onload = function () {
+            var body = (xhr.responseText || '').substring(0, 60);
+            dbg('XHR: s=' + xhr.status + ' len=' + (xhr.responseText || '').length + ' body=' + body);
+        };
+        xhr.onerror = function () {
+            dbg('XHR: NETWORK ERROR');
+        };
+        xhr.ontimeout = function () {
+            dbg('XHR: TIMEOUT');
+        };
+        xhr.send();
+    } catch (e) {
+        dbg('XHR err: ' + e.message);
+    }
+
+    // Headers for native player on Android
     var playerHeaders = {};
     if (isAndroid) {
         playerHeaders = {
+            'User-Agent': 'Mozilla/5.0',
             'Origin': getHost(),
             'Referer': getHost() + '/'
         };
@@ -534,7 +532,13 @@ CollapsBalancer.prototype._playVideo = function (element, item, viewed) {
 
     if (playlist.length > 1) first.playlist = playlist;
 
-    dbg('Calling Player.play + playlist(' + playlist.length + ')');
+    // On Android, try native player to bypass HLS.js issues
+    if (isAndroid) {
+        dbg('Using android native player');
+        try { Lampa.Player.runas('android'); } catch (e) {}
+    }
+
+    dbg('Player.play(' + playlist.length + ' items)');
 
     Lampa.Player.play(first);
     Lampa.Player.playlist(playlist);
