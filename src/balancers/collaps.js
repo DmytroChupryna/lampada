@@ -9,6 +9,67 @@ import { t } from '../lang.js';
 
 var DEFAULT_HOST = 'https://api.delivembd.ws';
 
+// Keywords to identify Ukrainian audio tracks
+var UA_KEYWORDS = [
+    'укр', 'ukr', 'українськ',
+    'так треба', 'нло-тв', 'нло тв',
+    '1+1', 'новий канал', 'ictv', 'стб',
+    'інтер', 'uateam', 'ua team',
+    'тоніс', 'мегого', 'sweet.tv'
+];
+
+/**
+ * Check if an audio track name is Ukrainian
+ */
+function isUkrainianTrack(name) {
+    if (!name) return false;
+    var lower = name.toLowerCase();
+    for (var i = 0; i < UA_KEYWORDS.length; i++) {
+        if (lower.indexOf(UA_KEYWORDS[i]) !== -1) return true;
+    }
+    return false;
+}
+
+/**
+ * Format audio info string: Ukrainian tracks first, marked with [UKR]
+ */
+function formatVoicesInfo(voices, maxShow) {
+    if (!voices || !voices.length) return 'Collaps';
+    maxShow = maxShow || 4;
+
+    var ukr = [];
+    var other = [];
+
+    for (var i = 0; i < voices.length; i++) {
+        var name = voices[i];
+        if (!name || name === 'delete') continue;
+        if (isUkrainianTrack(name)) {
+            ukr.push(name);
+        } else {
+            other.push(name);
+        }
+    }
+
+    var parts = [];
+
+    // Ukrainian tracks first, marked
+    for (var j = 0; j < ukr.length && parts.length < maxShow; j++) {
+        parts.push('\uD83C\uDDFA\uD83C\uDDE6 ' + ukr[j]);
+    }
+
+    // Then other tracks
+    for (var k = 0; k < other.length && parts.length < maxShow; k++) {
+        parts.push(other[k]);
+    }
+
+    var total = ukr.length + other.length;
+    if (total > maxShow) {
+        parts.push('+' + (total - maxShow));
+    }
+
+    return parts.join(', ');
+}
+
 function getHost() {
     var h = Lampa.Storage.get('collaps_host', '');
     return h || DEFAULT_HOST;
@@ -159,7 +220,7 @@ CollapsBalancer.prototype._processMovie = function (config) {
     this.component.reset();
 
     var voices = config.source.audioNames || [];
-    var info = voices.length ? voices.slice(0, 3).join(', ') : 'Collaps';
+    var info = formatVoicesInfo(voices);
 
     this._appendItem({
         title:     config.title || this.select_title,
@@ -226,7 +287,7 @@ CollapsBalancer.prototype._renderEpisodes = function (seasonIndex) {
 
     season.episodes.forEach(function (ep) {
         var voices = (ep.audio && ep.audio.names) ? ep.audio.names : [];
-        var info   = voices.length ? voices.slice(0, 3).join(', ') : 'Collaps';
+        var info   = formatVoicesInfo(voices);
 
         self._appendItem({
             title:     t('lampada_episode') + ' ' + ep.episode,
