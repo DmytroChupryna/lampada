@@ -1190,44 +1190,34 @@
 
         var url = element.url;
 
-        // Detect platform
+        // Detect platform — multiple methods
         var isAndroid = false;
         try { isAndroid = Lampa.Platform.is('android'); } catch (e) {}
 
-        var isTizen = false;
-        try { isTizen = Lampa.Platform.is('tizen'); } catch (e) {}
+        // Fallback: check user agent for Android
+        var uaAndroid = false;
+        try { uaAndroid = /android/i.test(navigator.userAgent); } catch (e) {}
 
-        var isWebos = false;
-        try { isWebos = Lampa.Platform.is('webos'); } catch (e) {}
+        // Check Lampa.Platform details
+        var platformName = '';
+        try { platformName = Lampa.Platform.name || ''; } catch (e) {}
+        try { if (!platformName && Lampa.Platform.get) platformName = Lampa.Platform.get() || ''; } catch (e) {}
 
         // Show origin and platform info
         var origin = 'unknown';
         try { origin = window.location.origin || window.location.href; } catch (e) {}
-        dbg('origin=' + origin + ' android=' + isAndroid);
 
-        // Pre-flight: test if TV can reach the m3u8 manifest
-        try {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', url, true);
-            xhr.timeout = 8000;
-            xhr.onload = function () {
-                var body = (xhr.responseText || '').substring(0, 50);
-                dbg('XHR s=' + xhr.status + ' len=' + (xhr.responseText || '').length + ' ' + body);
-            };
-            xhr.onerror = function () {
-                dbg('XHR NETWORK ERROR (origin blocked?)');
-            };
-            xhr.ontimeout = function () {
-                dbg('XHR TIMEOUT');
-            };
-            xhr.send();
-        } catch (e) {
-            dbg('XHR err: ' + e.message);
-        }
+        var isBlockedOrigin = false;
+        try { isBlockedOrigin = /lampa\.mx/i.test(window.location.hostname); } catch (e) {}
 
-        // Headers for native player on Android
+        dbg('origin=' + origin + ' platform=' + platformName + ' android=' + isAndroid + ' ua=' + uaAndroid);
+
+        // Determine if we need native player (to bypass WebView Origin header)
+        var useNativePlayer = isAndroid || uaAndroid;
+
+        // Player headers for native player
         var playerHeaders = {};
-        if (isAndroid) {
+        if (useNativePlayer) {
             playerHeaders = {
                 'User-Agent': 'Mozilla/5.0',
                 'Origin': getHost(),
@@ -1272,10 +1262,16 @@
 
         if (playlist.length > 1) first.playlist = playlist;
 
-        // On Android, try native player to bypass HLS.js issues
-        if (isAndroid) {
-            dbg('Using android native player');
-            try { Lampa.Player.runas('android'); } catch (e) {}
+        // Force native player to bypass WebView Origin blocking
+        if (useNativePlayer) {
+            dbg('Forcing native android player');
+            try { Lampa.Player.runas('android'); } catch (e) {
+                dbg('runas failed: ' + e.message);
+            }
+        } else if (isBlockedOrigin) {
+            // Non-Android on lampa.mx — try 'lampa' player as fallback
+            dbg('Blocked origin, trying lampa player');
+            try { Lampa.Player.runas('lampa'); } catch (e) {}
         }
 
         dbg('Player.play(' + playlist.length + ' items)');
