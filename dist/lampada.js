@@ -745,13 +745,18 @@
     AshdiBalancer.disabled   = false;
 
     /**
-     * Collaps Balancer — via api.delivembd.ws
+     * Collaps Balancer — via api.delivembd.ws / api.namy.ws
      * No API key needed, works internationally (no geo-block)
      * Returns HTML embed page with makePlayer({...}) containing HLS/DASH streams
      * Supports movies and series with multiple audio tracks and subtitles
      */
 
     var DEFAULT_HOST = 'https://api.delivembd.ws';
+
+    function dbg(msg) {
+        console.log('[Lampada Collaps]', msg);
+        try { Lampa.Noty.show('[DBG] ' + msg, { time: 8000 }); } catch (e) {}
+    }
 
     // Keywords to identify Ukrainian audio tracks
     var UA_KEYWORDS = [
@@ -775,7 +780,7 @@
     }
 
     /**
-     * Format audio info string: Ukrainian tracks first, marked with [UKR]
+     * Format audio info string: Ukrainian tracks first, marked with flag
      */
     function formatVoicesInfo(voices, maxShow) {
         if (!voices || !voices.length) return 'Collaps';
@@ -840,16 +845,20 @@
         this.object = _object;
         this.select_title = _object.search || (_object.movie && (_object.movie.title || _object.movie.name)) || '';
 
+        dbg('IDs: kp=' + (ids.kp || 'none') + ' imdb=' + (ids.imdb || 'none'));
+
         // Build list of URLs to try: KP ID first, then IMDB ID
         var urls = [];
         if (ids.kp) urls.push(getHost() + '/embed/kp/' + ids.kp);
         if (ids.imdb) urls.push(getHost() + '/embed/imdb/' + ids.imdb);
 
         if (urls.length === 0) {
+            dbg('No KP or IMDB ID found!');
             this.component.emptyForQuery(this.select_title);
             return;
         }
 
+        dbg('Trying: ' + urls[0]);
         this.component.loading(true);
         this._tryUrls(urls, 0);
     };
@@ -861,6 +870,7 @@
         var self = this;
 
         if (index >= urls.length) {
+            dbg('All URLs exhausted, nothing found');
             this.component.loading(false);
             this.component.emptyForQuery(this.select_title);
             return;
@@ -872,20 +882,22 @@
             urls[index],
             function (response) {
                 var str = typeof response === 'string' ? response : '';
-                // Check if response has actual content (not just empty HTML shell)
+                dbg('Response len=' + str.length + ' hasMakePlayer=' + (str.indexOf('makePlayer') !== -1));
+
                 if (str && str.indexOf('makePlayer') !== -1) {
                     self.component.loading(false);
                     self._processHTML(str);
                 } else if (index + 1 < urls.length) {
-                    // Try next URL
+                    dbg('No makePlayer, trying next URL: ' + urls[index + 1]);
                     self._tryUrls(urls, index + 1);
                 } else {
                     self.component.loading(false);
                     self.component.emptyForQuery(self.select_title);
                 }
             },
-            function () {
-                // Network error — try next URL
+            function (a, c) {
+                var status = a && a.status ? a.status : '?';
+                dbg('Network error (status=' + status + ') on ' + urls[index]);
                 if (index + 1 < urls.length) {
                     self._tryUrls(urls, index + 1);
                 } else {
@@ -903,81 +915,68 @@
     CollapsBalancer.prototype._processHTML = function (html) {
         var config = this._extractConfig(html);
         if (!config) {
+            dbg('Failed to extract config from HTML');
             this.component.emptyForQuery(this.select_title);
             return;
         }
 
         // Determine movie vs series
         if (config.playlist && config.playlist.seasons) {
+            dbg('Series found: ' + config.playlist.seasons.length + ' seasons');
             this._processSeries(config);
         } else if (config.source) {
+            var hlsUrl = config.source.hls || '';
+            dbg('Movie found, HLS URL: ' + hlsUrl.substring(0, 80) + '...');
             this._processMovie(config);
         } else {
+            dbg('No source and no playlist in config');
             this.component.emptyForQuery(this.select_title);
         }
     };
 
     /**
      * Extract makePlayer({...}) config from Collaps HTML
+     * Uses eval like online_mod for reliable parsing
      */
     CollapsBalancer.prototype._extractConfig = function (html) {
         try {
-            var str = html.replace(/\r?\n/g, ' ');
+            var str = (html || '').replace(/\n/g, '');
 
-            // Find makePlayer({...}) block
-            var match = str.match(/makePlayer\s*\(\s*(\{[\s\S]*?\})\s*\)\s*;/);
-            if (!match) return null;
-
-            // The config contains JS (functions, etc.), so we can't JSON.parse it
-            // Instead, extract specific fields with regex
-
-            var configStr = match[1];
-            var result = { source: null, playlist: null };
-
-            // Check if blocked
-            if (/blocked\s*:\s*true/.test(configStr)) return null;
-
-            // Extract source (movie)
-            var hlsMatch = configStr.match(/hls\s*:\s*"([^"]+)"/);
-            var dashMatch = configStr.match(/dash\s*:\s*"([^"]+)"/);
-            var audioMatch = configStr.match(/audio\s*:\s*(\{[^}]*"names"\s*:\s*\[[^\]]*\][^}]*\})/);
-            var titleMatch = configStr.match(/title\s*:\s*"([^"]+)"/);
-
-            // Extract playlist (series)
-            var seasonsMatch = configStr.match(/seasons\s*:\s*(\[[\s\S]*?\])\s*,?\s*(?:current|onPlaylistChange|qualityByWidth)/);
-
-            if (seasonsMatch) {
-                try {
-                    var seasons = (0, eval)('"use strict"; (' + seasonsMatch[1] + ')');
-                    var audioNames = [];
-                    if (audioMatch) {
-                        var namesM = audioMatch[1].match(/"names"\s*:\s*(\[[^\]]*\])/);
-                        if (namesM) audioNames = JSON.parse(namesM[1]);
-                    }
-                    result.playlist = {
-                        seasons: seasons,
-                        audioNames: audioNames
-                    };
-                } catch (e) {
-                    // fallback: can't parse seasons
-                }
-            } else if (hlsMatch) {
-                var audioNames2 = [];
-                if (audioMatch) {
-                    var namesM2 = audioMatch[1].match(/"names"\s*:\s*(\[[^\]]*\])/);
-                    if (namesM2) audioNames2 = JSON.parse(namesM2[1]);
-                }
-                result.source = {
-                    hls: hlsMatch ? hlsMatch[1] : '',
-                    dash: dashMatch ? dashMatch[1] : '',
-                    audioNames: audioNames2
-                };
+            // Use same regex as online_mod
+            var find = str.match(/makePlayer\(({.*?})\);/);
+            if (!find) {
+                dbg('Regex: makePlayer not matched');
+                return null;
             }
 
-            result.title = titleMatch ? titleMatch[1] : '';
+            dbg('makePlayer matched, len=' + find[1].length);
 
-            return (result.source || result.playlist) ? result : null;
+            var json;
+            try {
+                // eval the config as JS object — same approach as online_mod
+                json = (0, eval)('"use strict"; (' + find[1] + ')');
+            } catch (e) {
+                dbg('eval failed: ' + e.message);
+                return null;
+            }
+
+            if (!json) {
+                dbg('eval returned null');
+                return null;
+            }
+
+            if (json.blocked) {
+                dbg('Content is blocked');
+                return null;
+            }
+
+            dbg('Config parsed OK, title=' + (json.title || '?') +
+                ', hasSource=' + !!json.source +
+                ', hasPlaylist=' + !!(json.playlist && json.playlist.seasons));
+
+            return json;
         } catch (e) {
+            dbg('extractConfig error: ' + e.message);
             return null;
         }
     };
@@ -989,15 +988,19 @@
         this.items_list = [];
         this.component.reset();
 
-        var voices = config.source.audioNames || [];
+        var voices = (config.source.audio && config.source.audio.names) || [];
+        var audioTracks = voices.map(function (name) { return { language: name }; });
         var info = formatVoicesInfo(voices);
 
+        var hlsUrl = config.source.hls || '';
+
         this._appendItem({
-            title:     config.title || this.select_title,
-            quality:   'HLS',
-            info:      info,
-            url:       config.source.hls,
-            qualities: {}
+            title:       config.title || this.select_title,
+            quality:     'HLS',
+            info:        info,
+            url:         hlsUrl,
+            qualities:   {},
+            audio_tracks: audioTracks.length ? audioTracks : false
         });
 
         this.component.start(true);
@@ -1008,6 +1011,13 @@
     CollapsBalancer.prototype._processSeries = function (config) {
         this.data = { type: 'series', config: config };
         this.items_list = [];
+
+        // Sort seasons
+        if (config.playlist && config.playlist.seasons) {
+            config.playlist.seasons.sort(function (a, b) {
+                return a.season - b.season;
+            });
+        }
 
         // Restore saved choice
         var kpId = this._kpId();
@@ -1051,24 +1061,28 @@
         var season  = seasons[seasonIndex];
 
         if (!season || !season.episodes || !season.episodes.length) {
+            dbg('No episodes in season ' + seasonIndex);
             this.component.emptyForQuery(this.select_title);
             return;
         }
 
+        dbg('Season ' + season.season + ': ' + season.episodes.length + ' episodes');
+
         season.episodes.forEach(function (ep) {
             var voices = (ep.audio && ep.audio.names) ? ep.audio.names : [];
+            var audioTracks = voices.map(function (name) { return { language: name }; });
             var info   = formatVoicesInfo(voices);
 
             self._appendItem({
-                title:     t('lampada_episode') + ' ' + ep.episode,
-                quality:   'HLS',
-                info:      info,
-                url:       ep.hls || '',
-                dash:      ep.dash || '',
-                qualities: {},
-                season:    season.season,
-                episode:   parseInt(ep.episode) || 0,
-                audio:     voices
+                title:       t('lampada_episode') + ' ' + ep.episode,
+                quality:     'HLS',
+                info:        info,
+                url:         ep.hls || '',
+                dash:        ep.dash || '',
+                qualities:   {},
+                season:      season.season,
+                episode:     parseInt(ep.episode) || 0,
+                audio_tracks: audioTracks.length ? audioTracks : false
             });
         });
 
@@ -1169,41 +1183,64 @@
         }
 
         if (!element.url) {
+            dbg('PLAY: no url!');
             Lampa.Noty.show(t('lampada_nolink'));
             return;
         }
 
-        var playerHeaders = {
-            'Referer': getHost() + '/'
-        };
+        dbg('PLAY URL: ' + element.url.substring(0, 100));
+
+        // Headers: only set on Android without proxy (same as online_mod)
+        var isAndroid = false;
+        try { isAndroid = Lampa.Platform.is('android'); } catch (e) {}
+
+        var playerHeaders = {};
+        if (isAndroid) {
+            playerHeaders = {
+                'Origin': getHost(),
+                'Referer': getHost() + '/'
+            };
+            dbg('Android: adding Origin/Referer headers');
+        }
 
         var first = {
-            url:      element.url,
-            quality:  element.qualities || {},
-            timeline: element.timeline,
-            title:    element.season
+            url:       element.url,
+            quality:   element.qualities || {},
+            timeline:  element.timeline,
+            title:     element.season
                 ? element.title
                 : this.select_title + (element.title !== this.select_title ? ' / ' + element.title : ''),
-            headers:  playerHeaders
+            headers:   playerHeaders
         };
+
+        // Pass audio tracks to player (like online_mod does)
+        if (element.audio_tracks) {
+            first.translate = { tracks: element.audio_tracks };
+        }
 
         var playlist = [];
 
         if (element.season) {
             this.items_list.forEach(function (el) {
-                playlist.push({
-                    url:      el.url,
-                    quality:  el.qualities || {},
-                    timeline: el.timeline,
-                    title:    el.title,
-                    headers:  playerHeaders
-                });
+                var cell = {
+                    url:       el.url,
+                    quality:   el.qualities || {},
+                    timeline:  el.timeline,
+                    title:     el.title,
+                    headers:   playerHeaders
+                };
+                if (el.audio_tracks) {
+                    cell.translate = { tracks: el.audio_tracks };
+                }
+                playlist.push(cell);
             });
         } else {
             playlist.push(first);
         }
 
         if (playlist.length > 1) first.playlist = playlist;
+
+        dbg('Calling Player.play + playlist(' + playlist.length + ')');
 
         Lampa.Player.play(first);
         Lampa.Player.playlist(playlist);
