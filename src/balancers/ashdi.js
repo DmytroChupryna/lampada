@@ -5,6 +5,7 @@
 import { BaseBalancer } from './base.js';
 import { extractPlayerjs, parseFileParam, parseEpisodeFile } from '../utils/playerjs.js';
 import { applyProxy } from '../utils/proxy.js';
+import { t } from '../lang.js';
 
 var DEFAULT_HOST = 'https://base.ashdi.vip';
 
@@ -108,7 +109,7 @@ AshdiBalancer.prototype._buildFilter = function () {
     var self = this;
     this.data.seasons.forEach(function (season, i) {
         self.filter_items.season.push(
-            season.title || (Lampa.Lang.translate('lampada_season') + ' ' + (i + 1))
+            season.title || (t('lampada_season') + ' ' + (i + 1))
         );
     });
 
@@ -188,7 +189,7 @@ AshdiBalancer.prototype._renderEpisodes = function (seasonIndex) {
         var qKeys  = Object.keys(parsed.qualities || {});
 
         self._appendItem({
-            title:     ep.title || (Lampa.Lang.translate('lampada_episode') + ' ' + (i + 1)),
+            title:     ep.title || (t('lampada_episode') + ' ' + (i + 1)),
             quality:   qKeys.length ? qKeys.join(', ') : 'HLS',
             info:      'Ashdi \u2022 UKR',
             url:       parsed.url,
@@ -262,7 +263,7 @@ AshdiBalancer.prototype._playVideo = function (element, item, viewed) {
     }
 
     if (!element.url) {
-        Lampa.Noty.show(Lampa.Lang.translate('lampada_nolink'));
+        Lampa.Noty.show(t('lampada_nolink'));
         return;
     }
 
@@ -310,9 +311,9 @@ AshdiBalancer.prototype._kpId = function () {
 
 // --------------- Static metadata ---------------
 
-AshdiBalancer.title    = 'Ashdi';
-AshdiBalancer.name     = 'ashdi';
-AshdiBalancer.kp       = true;
-AshdiBalancer.imdb     = false;
-AshdiBalancer.search   = false;
-AshdiBalancer.disabled = false;
+AshdiBalancer.title      = 'Ashdi';
+AshdiBalancer.balanser   = 'ashdi';
+AshdiBalancer.kp         = true;
+AshdiBalancer.imdb       = false;
+AshdiBalancer.searchable = false;
+AshdiBalancer.disabled   = false;

@@ -7,6 +7,7 @@
  * Mirrors the online_mod/BWA pattern.
  */
 import { AshdiBalancer } from './balancers/ashdi.js';
+import { t } from './lang.js';
 
 // All available balancer constructors
 var BALANCER_LIST = [
@@ -50,12 +51,12 @@ export function component(object) {
     // Register balancers
     BALANCER_LIST.forEach(function (Ctor) {
         var entry = {
-            name:     Ctor.name,
+            name:     Ctor.balanser,
             title:    Ctor.title,
             source:   new Ctor(comp, object),
             kp:       Ctor.kp,
             imdb:     Ctor.imdb,
-            search:   Ctor.search,
+            search:   Ctor.searchable,
             disabled: Ctor.disabled
         };
         all_sources.push(entry);
@@ -91,7 +92,7 @@ export function component(object) {
      */
     this.loading = function (show) {
         if (show) {
-            body.html('<div class="lampada-empty">' + Lampa.Lang.translate('lampada_loading') + '</div>');
+            body.html('<div class="lampada-empty">' + t('lampada_loading') + '</div>');
         }
     };
 
@@ -100,7 +101,7 @@ export function component(object) {
      */
     this.empty = function () {
         this.reset();
-        body.html('<div class="lampada-empty">' + Lampa.Lang.translate('lampada_empty') + '</div>');
+        body.html('<div class="lampada-empty">' + t('lampada_empty') + '</div>');
         activateContent();
     };
 
@@ -109,7 +110,7 @@ export function component(object) {
      */
     this.emptyForQuery = function (query) {
         this.reset();
-        body.html('<div class="lampada-empty">' + Lampa.Lang.translate('lampada_empty') + ': ' + query + '</div>');
+        body.html('<div class="lampada-empty">' + t('lampada_empty') + ': ' + query + '</div>');
         activateContent();
     };
 
@@ -210,7 +211,7 @@ export function component(object) {
         });
 
         Lampa.Select.show({
-            title: Lampa.Lang.translate('lampada_source'),
+            title: t('lampada_source'),
             items: items,
             onBack: function () {
                 Lampa.Controller.toggle('content');

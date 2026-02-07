@@ -2,9 +2,19 @@
     'use strict';
 
     /**
+     * Safe translate wrapper — returns key if Lang is unavailable
+     */
+    function t(key) {
+        if (Lampa.Lang && Lampa.Lang.translate) return Lampa.Lang.translate(key);
+        return key;
+    }
+
+    /**
      * Language strings for the Lampada plugin
      */
     function initLang() {
+        if (!Lampa.Lang || !Lampa.Lang.add) return;
+
         Lampa.Lang.add({
             // General
             lampada_title:            { uk: 'Lampada',                                en: 'Lampada',                  ru: 'Lampada' },
@@ -116,7 +126,10 @@
     /**
      * Settings registration for the Lampada plugin
      */
+
     function initSettings() {
+        if (!Lampa.SettingsApi || !Lampa.SettingsApi.addParam) return;
+
         // --- General proxy settings ---
         Lampa.SettingsApi.addParam({
             component: 'lampada',
@@ -126,7 +139,7 @@
                 default: true
             },
             field: {
-                name: Lampa.Lang.translate('lampada_settings_proxy'),
+                name: t('lampada_settings_proxy'),
                 description: ''
             },
             onChange: function (val) {
@@ -143,7 +156,7 @@
                 default: ''
             },
             field: {
-                name: Lampa.Lang.translate('lampada_settings_proxy_url'),
+                name: t('lampada_settings_proxy_url'),
                 description: 'cors.nb557.workers.dev / cors557.deno.dev'
             },
             onChange: function (val) {
@@ -161,7 +174,7 @@
                 default: 'https://base.ashdi.vip'
             },
             field: {
-                name: Lampa.Lang.translate('ashdi_settings_host'),
+                name: t('ashdi_settings_host'),
                 description: 'https://base.ashdi.vip'
             },
             onChange: function (val) {
@@ -497,7 +510,7 @@
         var self = this;
         this.data.seasons.forEach(function (season, i) {
             self.filter_items.season.push(
-                season.title || (Lampa.Lang.translate('lampada_season') + ' ' + (i + 1))
+                season.title || (t('lampada_season') + ' ' + (i + 1))
             );
         });
 
@@ -576,7 +589,7 @@
             var qKeys  = Object.keys(parsed.qualities || {});
 
             self._appendItem({
-                title:     ep.title || (Lampa.Lang.translate('lampada_episode') + ' ' + (i + 1)),
+                title:     ep.title || (t('lampada_episode') + ' ' + (i + 1)),
                 quality:   qKeys.length ? qKeys.join(', ') : 'HLS',
                 info:      'Ashdi \u2022 UKR',
                 url:       parsed.url,
@@ -650,7 +663,7 @@
         }
 
         if (!element.url) {
-            Lampa.Noty.show(Lampa.Lang.translate('lampada_nolink'));
+            Lampa.Noty.show(t('lampada_nolink'));
             return;
         }
 
@@ -698,12 +711,12 @@
 
     // --------------- Static metadata ---------------
 
-    AshdiBalancer.title    = 'Ashdi';
-    AshdiBalancer.name     = 'ashdi';
-    AshdiBalancer.kp       = true;
-    AshdiBalancer.imdb     = false;
-    AshdiBalancer.search   = false;
-    AshdiBalancer.disabled = false;
+    AshdiBalancer.title      = 'Ashdi';
+    AshdiBalancer.balanser   = 'ashdi';
+    AshdiBalancer.kp         = true;
+    AshdiBalancer.imdb       = false;
+    AshdiBalancer.searchable = false;
+    AshdiBalancer.disabled   = false;
 
     /**
      * Component — main orchestrator for the Lampada plugin.
@@ -753,12 +766,12 @@
         // Register balancers
         BALANCER_LIST.forEach(function (Ctor) {
             var entry = {
-                name:     Ctor.name,
+                name:     Ctor.balanser,
                 title:    Ctor.title,
                 source:   new Ctor(comp, object),
                 kp:       Ctor.kp,
                 imdb:     Ctor.imdb,
-                search:   Ctor.search,
+                search:   Ctor.searchable,
                 disabled: Ctor.disabled
             };
             all_sources.push(entry);
@@ -794,7 +807,7 @@
          */
         this.loading = function (show) {
             if (show) {
-                body.html('<div class="lampada-empty">' + Lampa.Lang.translate('lampada_loading') + '</div>');
+                body.html('<div class="lampada-empty">' + t('lampada_loading') + '</div>');
             }
         };
 
@@ -803,7 +816,7 @@
          */
         this.empty = function () {
             this.reset();
-            body.html('<div class="lampada-empty">' + Lampa.Lang.translate('lampada_empty') + '</div>');
+            body.html('<div class="lampada-empty">' + t('lampada_empty') + '</div>');
             activateContent();
         };
 
@@ -812,7 +825,7 @@
          */
         this.emptyForQuery = function (query) {
             this.reset();
-            body.html('<div class="lampada-empty">' + Lampa.Lang.translate('lampada_empty') + ': ' + query + '</div>');
+            body.html('<div class="lampada-empty">' + t('lampada_empty') + ': ' + query + '</div>');
             activateContent();
         };
 
@@ -912,7 +925,7 @@
             });
 
             Lampa.Select.show({
-                title: Lampa.Lang.translate('lampada_source'),
+                title: t('lampada_source'),
                 items: items,
                 onBack: function () {
                     Lampa.Controller.toggle('content');
@@ -1049,15 +1062,17 @@
         Lampa.Component.add(COMP_NAME, component);
 
         // Register manifest (makes plugin appear in video sources)
+        if (!Lampa.Manifest) return;
+
         Lampa.Manifest.plugins = {
             type: 'video',
             version: MOD_VERSION,
             name: PLUGIN_NAME + ' - ' + MOD_VERSION,
-            description: Lampa.Lang.translate('lampada_watch'),
+            description: t('lampada_watch'),
             component: COMP_NAME,
             onContextMenu: function (obj) {
                 return {
-                    name: Lampa.Lang.translate('lampada_watch'),
+                    name: t('lampada_watch'),
                     description: ''
                 };
             },

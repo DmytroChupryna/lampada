@@ -1,7 +1,17 @@
 /**
+ * Safe translate wrapper — returns key if Lang is unavailable
+ */
+export function t(key) {
+    if (Lampa.Lang && Lampa.Lang.translate) return Lampa.Lang.translate(key);
+    return key;
+}
+
+/**
  * Language strings for the Lampada plugin
  */
 export function initLang() {
+    if (!Lampa.Lang || !Lampa.Lang.add) return;
+
     Lampa.Lang.add({
         // General
         lampada_title:            { uk: 'Lampada',                                en: 'Lampada',                  ru: 'Lampada' },

@@ -2,21 +2,24 @@
  * Manifest registration and menu button
  */
 import { component, MOD_VERSION, PLUGIN_NAME, COMP_NAME } from './component.js';
+import { t } from './lang.js';
 
 export function initManifest() {
     // Register component
     Lampa.Component.add(COMP_NAME, component);
 
     // Register manifest (makes plugin appear in video sources)
+    if (!Lampa.Manifest) return;
+
     Lampa.Manifest.plugins = {
         type: 'video',
         version: MOD_VERSION,
         name: PLUGIN_NAME + ' - ' + MOD_VERSION,
-        description: Lampa.Lang.translate('lampada_watch'),
+        description: t('lampada_watch'),
         component: COMP_NAME,
         onContextMenu: function (obj) {
             return {
-                name: Lampa.Lang.translate('lampada_watch'),
+                name: t('lampada_watch'),
                 description: ''
             };
         },

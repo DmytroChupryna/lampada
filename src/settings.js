@@ -1,7 +1,11 @@
 /**
  * Settings registration for the Lampada plugin
  */
+import { t } from './lang.js';
+
 export function initSettings() {
+    if (!Lampa.SettingsApi || !Lampa.SettingsApi.addParam) return;
+
     // --- General proxy settings ---
     Lampa.SettingsApi.addParam({
         component: 'lampada',
@@ -11,7 +15,7 @@ export function initSettings() {
             default: true
         },
         field: {
-            name: Lampa.Lang.translate('lampada_settings_proxy'),
+            name: t('lampada_settings_proxy'),
             description: ''
         },
         onChange: function (val) {
@@ -28,7 +32,7 @@ export function initSettings() {
             default: ''
         },
         field: {
-            name: Lampa.Lang.translate('lampada_settings_proxy_url'),
+            name: t('lampada_settings_proxy_url'),
             description: 'cors.nb557.workers.dev / cors557.deno.dev'
         },
         onChange: function (val) {
@@ -46,7 +50,7 @@ export function initSettings() {
             default: 'https://base.ashdi.vip'
         },
         field: {
-            name: Lampa.Lang.translate('ashdi_settings_host'),
+            name: t('ashdi_settings_host'),
             description: 'https://base.ashdi.vip'
         },
         onChange: function (val) {
