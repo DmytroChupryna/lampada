@@ -430,13 +430,18 @@ CollapsBalancer.prototype._playVideo = function (element, item, viewed) {
         return;
     }
 
+    var playerHeaders = {
+        'Referer': getHost() + '/'
+    };
+
     var first = {
         url:      element.url,
         quality:  element.qualities || {},
         timeline: element.timeline,
         title:    element.season
             ? element.title
-            : this.select_title + (element.title !== this.select_title ? ' / ' + element.title : '')
+            : this.select_title + (element.title !== this.select_title ? ' / ' + element.title : ''),
+        headers:  playerHeaders
     };
 
     var playlist = [];
@@ -447,7 +452,8 @@ CollapsBalancer.prototype._playVideo = function (element, item, viewed) {
                 url:      el.url,
                 quality:  el.qualities || {},
                 timeline: el.timeline,
-                title:    el.title
+                title:    el.title,
+                headers:  playerHeaders
             });
         });
     } else {
